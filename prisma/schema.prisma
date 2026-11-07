@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL") // app traffic (pooled on Supabase)
+  directUrl = env("DIRECT_URL") // migrations (session pooler / direct)
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  cart         Cart?
+  orders       Order[]
+}
+
+// Dummy catalog for now. The data layer in src/lib/catalog.ts is the single
+// place to swap for the real products API later.
+model Product {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  description    String
+  priceCents     Int
+  compareAtCents Int?
+  category       String
+  image          String
+  imagePosition  String    @default("50% 50%")
+  features       String[]
+  rating         Float     @default(4.8)
+  reviewCount    Int       @default(0)
+  featured       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  variants       Variant[]
+
+  @@index([category])
+}
+
+model Variant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  model      String
+  color      String
+  colorHex   String
+  stock      Int         @default(0)
+  sku        String      @unique
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([productId, model, color])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?    @unique
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int
+
+  @@unique([cartId, variantId])
+}
+
+enum OrderStatus {
+  PLACED
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  number        String      @unique
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  status        OrderStatus @default(PLACED)
+  subtotalCents Int
+  shippingCents Int
+  totalCents    Int
+  paymentMethod String      @default("COD")
+  shipName      String
+  shipPhone     String
+  shipLine1     String
+  shipLine2     String?
+  shipCity      String
+  shipState     String
+  shipPostal    String
+  shipCountry   String
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+
+  @@index([userId, createdAt])
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId  String?
+  variant    Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  name       String
+  image      String
+  model      String
+  color      String
+  unitCents  Int
+  quantity   Int
+}
