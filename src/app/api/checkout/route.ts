@@ -27,46 +27,59 @@ export async function POST(req: Request) {
     const cart = await findCart();
     if (!cart || cart.items.length === 0) return fail("Your cart is empty", 400);
 
-    const order = await prisma.$transaction(async (tx) => {
-      // Decrement stock for every line in ONE statement (fewer round trips to a remote DB).
-      // A line that lacks stock isn't updated, so the count falls short and the whole order aborts.
-      const ids = cart.items.map((i) => i.variantId);
-      const qtys = cart.items.map((i) => i.quantity);
-      const updated = await tx.$executeRaw`
-        UPDATE "Variant" v SET stock = v.stock - t.q
-        FROM (SELECT unnest(${ids}::text[]) AS id, unnest(${qtys}::int[]) AS q) t
-        WHERE v.id = t.id AND v.stock >= t.q`;
-      if (updated !== cart.items.length) {
+    const subtotal = cart.items.reduce((s, i) => s + i.variant.product.priceCents * i.quantity, 0);
+    const shipping = shippingFor(subtotal);
+    const ids = cart.items.map((i) => i.variantId);
+    const qtys = cart.items.map((i) => i.quantity);
+
+    // One all-or-nothing batch. (Not an interactive transaction: those don't work through
+    // Supabase's transaction pooler, which is what keeps serverless connections under control.)
+    // Statement 1 decrements stock for every line and then divides by zero if ANY line was
+    // short, which makes the database roll back the whole batch, including the order below.
+    // (The divisor must depend on the data: a literal `1 / 0` is folded at plan time and always fails.)
+    let order;
+    try {
+      const [, created] = await prisma.$transaction([
+        prisma.$queryRaw`
+          WITH upd AS (
+            UPDATE "Variant" v SET stock = v.stock - t.q
+            FROM (SELECT unnest(${ids}::text[]) AS id, unnest(${qtys}::int[]) AS q) t
+            WHERE v.id = t.id AND v.stock >= t.q
+            RETURNING v.id
+          )
+          SELECT 1 / (CASE WHEN (SELECT count(*) FROM upd) = ${ids.length}::bigint THEN 1 ELSE 0 END) AS ok`,
+        prisma.order.create({
+          data: {
+            number: `CS-${Date.now().toString(36).toUpperCase()}${randomBytes(2).toString("hex").toUpperCase()}`,
+            userId: user.id,
+            subtotalCents: subtotal,
+            shippingCents: shipping,
+            totalCents: subtotal + shipping,
+            paymentMethod: "COD",
+            shipName: ship.name, shipPhone: ship.phone, shipLine1: ship.line1, shipLine2: ship.line2 || null,
+            shipCity: ship.city, shipState: ship.state, shipPostal: ship.postal, shipCountry: ship.country,
+            items: {
+              create: cart.items.map((i) => ({
+                variantId: i.variantId,
+                name: i.variant.product.name,
+                image: i.variant.product.image,
+                model: i.variant.model,
+                color: i.variant.color,
+                unitCents: i.variant.product.priceCents,
+                quantity: i.quantity,
+              })),
+            },
+          },
+        }),
+        prisma.cartItem.deleteMany({ where: { cartId: cart.id } }),
+      ]);
+      order = created;
+    } catch (e) {
+      if (String((e as Error)?.message).toLowerCase().includes("division by zero")) {
         throw new HttpError("Some items no longer have enough stock. Please review your cart.", 409);
       }
-      const subtotal = cart.items.reduce((s, i) => s + i.variant.product.priceCents * i.quantity, 0);
-      const shipping = shippingFor(subtotal);
-      const created = await tx.order.create({
-        data: {
-          number: `CS-${Date.now().toString(36).toUpperCase()}${randomBytes(2).toString("hex").toUpperCase()}`,
-          userId: user.id,
-          subtotalCents: subtotal,
-          shippingCents: shipping,
-          totalCents: subtotal + shipping,
-          paymentMethod: "COD",
-          shipName: ship.name, shipPhone: ship.phone, shipLine1: ship.line1, shipLine2: ship.line2 || null,
-          shipCity: ship.city, shipState: ship.state, shipPostal: ship.postal, shipCountry: ship.country,
-          items: {
-            create: cart.items.map((i) => ({
-              variantId: i.variantId,
-              name: i.variant.product.name,
-              image: i.variant.product.image,
-              model: i.variant.model,
-              color: i.variant.color,
-              unitCents: i.variant.product.priceCents,
-              quantity: i.quantity,
-            })),
-          },
-        },
-      });
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-      return created;
-    }, { maxWait: 10_000, timeout: 20_000 });
+      throw e;
+    }
 
     return ok({ id: order.id, number: order.number }, 201);
   } catch (e) {
