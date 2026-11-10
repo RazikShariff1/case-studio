@@ -1,6 +1,7 @@
 import { getUser } from "@/lib/auth";
-import { ok } from "@/lib/api";
+import { ok, fail } from "@/lib/api";
 
 export async function GET() {
-  return ok({ user: await getUser() });
+  const user = await getUser();
+  return user ? ok({ user }) : fail("Not signed in", 401);
 }

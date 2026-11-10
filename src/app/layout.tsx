@@ -1,35 +1,29 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
+import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
-import MobileTabs from "@/components/MobileTabs";
 import { getUser } from "@/lib/auth";
 import { getCartData } from "@/lib/cart";
 
+// Inter is only the fallback: Apple devices use their own system font (see --font-sans).
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Case Studio — Style That Protects", template: "%s · Case Studio" },
-  description: "Premium phone cases for every style and lifestyle.",
+  title: { default: "Case Studio. Cases made to feel as good as they look.", template: "%s - Case Studio" },
+  description: "Phone cases in every finish, for every phone. Free delivery and easy returns.",
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  viewportFit: "cover", // lets env(safe-area-inset-*) work on notched phones
-  themeColor: "#f0eadf", // tints the Android Chrome address bar to match
-};
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#fbfbfd" };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const [user, cart] = await Promise.all([getUser(), getCartData()]);
+  const [user, cart] = await Promise.all([getUser(), getCartData().catch(() => ({ count: 0 }))]);
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        <Header user={user} cartCount={cart.count} />
+    <html lang="en" className={`${inter.variable} h-full`}>
+      <body className="flex min-h-full flex-col">
+        <Nav signedIn={!!user} name={user?.name ?? ""} bagCount={cart.count} />
         <main className="flex-1">{children}</main>
         <Footer />
-        <MobileTabs signedIn={!!user} cartCount={cart.count} />
       </body>
     </html>
   );

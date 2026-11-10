@@ -5,13 +5,14 @@ export const ok = (data: unknown, status = 200) => NextResponse.json(data, { sta
 export const fail = (message: string, status = 400, extra?: object) =>
   NextResponse.json({ error: message, ...extra }, { status });
 
-export function handleError(e: unknown) {
+/** `friendly` swaps the platform's wording for a status (e.g. 409 on sign-up) with something a shopper should read. */
+export function handleError(e: unknown, friendly: Partial<Record<number, string>> = {}) {
   if (e instanceof ZodError) {
     return fail(e.issues[0]?.message ?? "Invalid input", 422, {
       fields: Object.fromEntries(e.issues.map((i) => [i.path.join("."), i.message])),
     });
   }
-  if (e instanceof HttpError) return fail(e.message, e.status);
+  if (e instanceof HttpError) return fail(friendly[e.status] ?? e.message, e.status);
   console.error(e);
   return fail("Something went wrong", 500);
 }

@@ -1,13 +1,14 @@
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { INDIAN_STATES, PHONE_RE, PIN_RE } from "@/lib/india";
-import { prisma } from "@/lib/db";
-import { getUser } from "@/lib/auth";
-import { findCart } from "@/lib/cart";
-import { shippingFor } from "@/lib/money";
+import { requireToken } from "@/lib/auth";
+import { readCart, hydrate, clearCart } from "@/lib/cart";
+import { getFreshCatalog } from "@/lib/catalog";
+import { placeOrder } from "@/lib/orders";
+import { createAddress } from "@/lib/addresses";
 import { ok, fail, handleError, readJson, HttpError } from "@/lib/api";
 
 const schema = z.object({
+  clientId: z.string().uuid("Please reload the page and try again"),
   name: z.string().trim().min(2, "Enter the recipient name").max(80),
   phone: z.string().trim().regex(PHONE_RE, "Enter a valid 10-digit mobile number"),
   line1: z.string().trim().min(3, "Enter your address").max(120),
@@ -16,72 +17,48 @@ const schema = z.object({
   state: z.enum(INDIAN_STATES, { error: "Select your state" }),
   postal: z.string().trim().regex(PIN_RE, "Enter a valid 6-digit PIN code"),
   country: z.literal("India").default("India"),
+  saveAddress: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
   try {
-    const user = await getUser();
-    if (!user) return fail("Please sign in to place your order", 401);
+    const token = await requireToken();
     const ship = schema.parse(await readJson(req));
 
-    const cart = await findCart();
-    if (!cart || cart.items.length === 0) return fail("Your cart is empty", 400);
+    const lines = await readCart();
+    if (lines.length === 0) return fail("Your bag is empty", 400);
 
-    const subtotal = cart.items.reduce((s, i) => s + i.variant.product.priceCents * i.quantity, 0);
-    const shipping = shippingFor(subtotal);
-    const ids = cart.items.map((i) => i.variantId);
-    const qtys = cart.items.map((i) => i.quantity);
+    // Read the catalogue fresh: the seller and price on each line must be today's, not up to half a minute old.
+    const cart = hydrate(lines, await getFreshCatalog());
+    if (cart.items.length < lines.length) throw new HttpError("Some items are no longer available. Please review your bag.", 409);
 
-    // One all-or-nothing batch. (Not an interactive transaction: those don't work through
-    // Supabase's transaction pooler, which is what keeps serverless connections under control.)
-    // Statement 1 decrements stock for every line and then divides by zero if ANY line was
-    // short, which makes the database roll back the whole batch, including the order below.
-    // (The divisor must depend on the data: a literal `1 / 0` is folded at plan time and always fails.)
-    let order;
+    let id: string;
     try {
-      const [, created] = await prisma.$transaction([
-        prisma.$queryRaw`
-          WITH upd AS (
-            UPDATE "Variant" v SET stock = v.stock - t.q
-            FROM (SELECT unnest(${ids}::text[]) AS id, unnest(${qtys}::int[]) AS q) t
-            WHERE v.id = t.id AND v.stock >= t.q
-            RETURNING v.id
-          )
-          SELECT 1 / (CASE WHEN (SELECT count(*) FROM upd) = ${ids.length}::bigint THEN 1 ELSE 0 END) AS ok`,
-        prisma.order.create({
-          data: {
-            number: `CS-${Date.now().toString(36).toUpperCase()}${randomBytes(2).toString("hex").toUpperCase()}`,
-            userId: user.id,
-            subtotalCents: subtotal,
-            shippingCents: shipping,
-            totalCents: subtotal + shipping,
-            paymentMethod: "COD",
-            shipName: ship.name, shipPhone: ship.phone, shipLine1: ship.line1, shipLine2: ship.line2 || null,
-            shipCity: ship.city, shipState: ship.state, shipPostal: ship.postal, shipCountry: ship.country,
-            items: {
-              create: cart.items.map((i) => ({
-                variantId: i.variantId,
-                name: i.variant.product.name,
-                image: i.variant.product.image,
-                model: i.variant.model,
-                color: i.variant.color,
-                unitCents: i.variant.product.priceCents,
-                quantity: i.quantity,
-              })),
-            },
-          },
-        }),
-        prisma.cartItem.deleteMany({ where: { cartId: cart.id } }),
-      ]);
-      order = created;
+      id = await placeOrder(token, {
+        clientId: ship.clientId,
+        items: cart.items.map((i) => ({ variantId: Number(i.variantId), sellerId: i.sellerId, quantity: i.quantity })),
+        address: {
+          name: ship.name, phone: ship.phone, line1: ship.line1, line2: ship.line2 ?? "", city: ship.city, state: ship.state,
+          pincode: ship.postal, country: ship.country,
+        },
+      });
     } catch (e) {
-      if (String((e as Error)?.message).toLowerCase().includes("division by zero")) {
-        throw new HttpError("Some items no longer have enough stock. Please review your cart.", 409);
-      }
+      // order-svc answers 409 when stock ran out between the bag and the button.
+      if (e instanceof HttpError && e.status === 409) throw new HttpError("Some items no longer have enough stock. Please review your bag.", 409);
       throw e;
     }
 
-    return ok({ id: order.id, number: order.number }, 201);
+    await clearCart();
+
+    // Best effort: a failure to remember the address must never fail an order that has been placed.
+    if (ship.saveAddress) {
+      await createAddress(token, {
+        label: "", recipient: ship.name, phone: ship.phone, line1: ship.line1, line2: ship.line2 ?? "", city: ship.city, state: ship.state,
+        postalCode: ship.postal, country: ship.country, isDefault: false,
+      }).catch(() => undefined);
+    }
+
+    return ok({ id }, 201);
   } catch (e) {
     return handleError(e);
   }

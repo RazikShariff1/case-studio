@@ -1,27 +1,21 @@
-import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { prisma } from "@/lib/db";
-import { createSession } from "@/lib/auth";
-import { mergeGuestCart } from "@/lib/cart";
+import { store } from "@/lib/platform";
+import { createSession, toUser } from "@/lib/auth";
 import { ok, fail, handleError, readJson } from "@/lib/api";
 
 const schema = z.object({ email: z.string().trim().toLowerCase().email(), password: z.string().min(1) });
 
-// Compared against when the email is unknown, so timing doesn't reveal which emails exist.
-const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 12);
+type LoggedIn = { token: string; expiresAt: string; customer: Parameters<typeof toUser>[0] };
 
 export async function POST(req: Request) {
   try {
     const parsed = schema.safeParse(await readJson(req));
     if (!parsed.success) return fail("Invalid email or password", 401);
-    const { email, password } = parsed.data;
-    const user = await prisma.user.findUnique({ where: { email } });
-    const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
-    if (!user || !valid) return fail("Invalid email or password", 401);
-    await createSession(user.id);
-    await mergeGuestCart(user.id);
-    return ok({ user: { id: user.id, name: user.name, email: user.email } });
+    const s = await store<LoggedIn>("/customer-svc/auth/login", { method: "POST", body: parsed.data });
+    await createSession(s.token, s.expiresAt);
+    return ok({ user: toUser(s.customer) });
   } catch (e) {
-    return handleError(e);
+    // The platform says 401 for any bad credentials, 403 for a suspended account and 429 after repeated failures.
+    return handleError(e, { 401: "Invalid email or password" });
   }
 }

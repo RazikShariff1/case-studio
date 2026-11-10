@@ -6,18 +6,16 @@ import { getUser } from "@/lib/auth";
 export const metadata: Metadata = { title: "Create account" };
 export const dynamic = "force-dynamic";
 
-export default async function RegisterPage({ searchParams }: PageProps<"/register">) {
+export default async function Page({ searchParams }: PageProps<"/register">) {
   const sp = await searchParams;
   const raw = Array.isArray(sp.next) ? sp.next[0] : sp.next;
   const next = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
   if (await getUser()) redirect(next);
   return (
-    <div className="container-x grid min-h-[70vh] place-items-center py-10">
-      <div className="w-full max-w-md rounded-[2rem] bg-card p-8 shadow-sm">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
-        <p className="mb-6 mt-1 text-sm text-muted">Save your cart, check out faster and track orders.</p>
-        <AuthForm mode="register" next={next} />
-      </div>
+    <div className="container-xs py-14 md:py-24">
+      <h1 className="h-page text-center">Create your account.</h1>
+      <p className="mb-10 mt-3 text-center text-[17px] text-muted">One account for your bag, addresses and orders.</p>
+      <div className="mx-auto max-w-sm"><AuthForm mode="register" next={next} /></div>
     </div>
   );
 }

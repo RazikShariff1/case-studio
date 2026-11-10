@@ -3,32 +3,22 @@ import Link from "next/link";
 import { formatPrice } from "@/lib/money";
 import type { ProductListItem } from "@/lib/catalog";
 
-export default function ProductCard({ p }: { p: ProductListItem }) {
+/** A product on a soft grey tile: photo, name, price, colours. Used in grids and in sliding rows. */
+export default function ProductCard({ p, className = "" }: { p: ProductListItem; className?: string }) {
+  const off = p.compareAtCents ? Math.round((1 - p.priceCents / p.compareAtCents) * 100) : 0;
   return (
-    <Link href={`/product/${p.slug}`} className="group block">
-      <div className="relative aspect-square overflow-hidden rounded-3xl bg-tile">
-        <Image src={p.image} alt={p.name} fill sizes="(min-width:1024px) 25vw, 50vw"
-          className="object-contain p-4 mix-blend-multiply transition duration-500 group-hover:scale-105" />
-        {p.compareAtCents && (
-          <span className="absolute left-3 top-3 rounded-full bg-ink px-2.5 py-1 text-[11px] font-semibold text-white">
-            −{Math.round((1 - p.priceCents / p.compareAtCents) * 100)}%
-          </span>
-        )}
+    <Link href={`/product/${p.slug}`} className={`group block ${className}`}>
+      <div className="tile relative aspect-[4/5] overflow-hidden">
+        <Image src={p.image} alt={p.name} fill sizes="(min-width:1024px) 25vw, (min-width:640px) 33vw, 70vw" className="object-contain p-6 mix-blend-multiply transition duration-700 ease-out group-hover:scale-[1.04]" style={{ objectPosition: p.imagePosition }} />
+        {off > 0 && <span className="absolute left-4 top-4 rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-danger">Save {off}%</span>}
       </div>
-      <div className="px-1 pt-3">
-        <h3 className="truncate text-sm font-semibold">{p.name}</h3>
-        <div className="mt-1 flex items-center justify-between">
-          <p className="text-sm">
-            <span className="font-semibold">{formatPrice(p.priceCents)}</span>
-            {p.compareAtCents && <span className="ml-2 text-xs text-muted line-through">{formatPrice(p.compareAtCents)}</span>}
-          </p>
-          <p className="text-xs text-muted"><span className="text-amber-600">★</span> {p.rating.toFixed(1)}</p>
+      <div className="px-1 pt-4">
+        <div className="mb-2 flex gap-1.5" aria-label={`${p.swatches.length} colours`}>
+          {p.swatches.slice(0, 6).map((s) => <span key={s.color} title={s.color} className="h-3 w-3 rounded-full border border-black/15" style={{ background: s.hex }} />)}
+          {p.swatches.length > 6 && <span className="fine leading-3">+{p.swatches.length - 6}</span>}
         </div>
-        <div className="mt-2 flex gap-1">
-          {p.swatches.slice(0, 5).map((s) => (
-            <span key={s.color} title={s.color} className="h-3.5 w-3.5 rounded-full border border-black/10" style={{ background: s.hex }} />
-          ))}
-        </div>
+        <h3 className="text-[19px] font-semibold leading-tight tracking-tight">{p.name}</h3>
+        <p className="mt-1 text-[14px] text-muted">From {formatPrice(p.priceCents)}{p.compareAtCents && <span className="ml-2 line-through opacity-70">{formatPrice(p.compareAtCents)}</span>}</p>
       </div>
     </Link>
   );

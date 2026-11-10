@@ -1,30 +1,26 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
-import { SignJWT, jwtVerify } from "jose";
-import { prisma } from "./db";
+import { store } from "./platform";
+import { HttpError } from "./api";
 
 const COOKIE = "session";
-const MAX_AGE = 60 * 60 * 24 * 30;
+const AUTH_TIMEOUT_MS = 15_000;
 
-const key = () => {
-  const s = process.env.AUTH_SECRET;
-  if (!s || s.length < 16) throw new Error("AUTH_SECRET is missing or too short");
-  return new TextEncoder().encode(s);
-};
+export type SessionUser = { id: string; name: string; email: string; phone: string };
 
-/** Route handlers / server actions only (sets a cookie). */
-export async function createSession(userId: string) {
-  const token = await new SignJWT({})
-    .setProtectedHeader({ alg: "HS256" })
-    .setSubject(userId)
-    .setIssuedAt()
-    .setExpirationTime(`${MAX_AGE}s`)
-    .sign(key());
+type Customer = { id: number; name: string; email: string; phone: string };
+
+export const toUser = (c: Customer): SessionUser => ({ id: String(c.id), name: c.name, email: c.email, phone: c.phone ?? "" });
+
+/** Route handlers / server actions only (sets a cookie). The token is customer-svc's own; it expires when the session does. */
+export async function createSession(token: string, expiresAt: string) {
+  const left = Math.floor((Date.parse(expiresAt) - Date.now()) / 1000);
   (await cookies()).set(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: MAX_AGE,
+    maxAge: Number.isFinite(left) && left > 60 ? left : 60 * 60 * 24 * 7,
   });
 }
 
@@ -32,19 +28,25 @@ export async function destroySession() {
   (await cookies()).delete(COOKIE);
 }
 
-export async function getUser() {
-  const token = (await cookies()).get(COOKIE)?.value;
+export async function getToken() {
+  return (await cookies()).get(COOKIE)?.value;
+}
+
+/** The signed-in shopper, or null (no cookie, an expired or revoked session, a suspended account, or the platform is down). */
+export const getUser = cache(async (): Promise<SessionUser | null> => {
+  const token = await getToken();
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, key());
-    if (!payload.sub) return null;
-    return await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, name: true },
-    });
+    const p = await store<{ customer: Customer }>("/customer-svc/auth/me", { token, timeoutMs: AUTH_TIMEOUT_MS });
+    return toUser(p.customer);
   } catch {
     return null;
   }
-}
+});
 
-export type SessionUser = NonNullable<Awaited<ReturnType<typeof getUser>>>;
+/** For routes that need a signed-in shopper: the token to call the platform with, or a 401. */
+export async function requireToken(): Promise<string> {
+  const token = await getToken();
+  if (!token) throw new HttpError("Please sign in to continue", 401);
+  return token;
+}

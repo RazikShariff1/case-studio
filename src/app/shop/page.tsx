@@ -1,16 +1,14 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { listProducts, listColors, SORTS, type SortKey } from "@/lib/catalog";
-import Image from "next/image";
+import { listProducts, listColors, getCatalog, CATEGORIES, SORTS, type SortKey } from "@/lib/catalog";
 import ProductCard from "@/components/ProductCard";
-import { SITE } from "@/lib/site-assets";
 import ShopFilters from "@/components/ShopFilters";
 
-export const metadata: Metadata = { title: "Shop" };
+export const metadata: Metadata = { title: "Store" };
 export const dynamic = "force-dynamic";
 
 const TAGLINES: Record<string, string> = {
-  minimal: "Quiet colours, clean lines.",
+  minimal: "Quiet colours. Clean lines.",
   trendy: "Prints and patterns, fresh every week.",
   luxury: "Leather, chrome and statement finishes.",
   colorful: "Bright, bold and impossible to miss.",
@@ -26,11 +24,22 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
     min: first(sp.min), max: first(sp.max), sort: first(sp.sort),
   };
   const sort = current.sort && current.sort in SORTS ? (current.sort as SortKey) : undefined;
-  const [{ items, total, page, pages }, colors] = await Promise.all([
-    listProducts({ ...current, min: num(current.min), max: num(current.max), sort, page: num(first(sp.page)) }),
-    listColors(),
-  ]);
 
+  let data: Awaited<ReturnType<typeof listProducts>> | null = null;
+  let colors: Awaited<ReturnType<typeof listColors>> = [];
+  let models: string[] = [];
+  let down = false;
+  try {
+    [data, colors, models] = await Promise.all([
+      listProducts({ ...current, min: num(current.min), max: num(current.max), sort, page: num(first(sp.page)) }),
+      listColors(),
+      getCatalog().then((c) => [...new Set(c.products.flatMap((p) => p.variants.map((v) => v.model)))]),
+    ]);
+  } catch {
+    down = true;
+  }
+
+  const category = CATEGORIES.find((c) => c.slug === current.category);
   const href = (p: number) => {
     const q = new URLSearchParams();
     Object.entries({ ...current, page: String(p) }).forEach(([k, v]) => v && q.set(k, v));
@@ -38,41 +47,37 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
   };
 
   return (
-    <div className="container-x py-8">
-      <h1 className="text-3xl font-semibold tracking-tight">{current.category ? <span className="capitalize">{current.category}</span> : "All cases"}</h1>
-      <p className="mt-1 text-sm text-muted">{total} {total === 1 ? "case" : "cases"}{current.q ? ` for “${current.q}”` : ""}</p>
+    <div className="container-x pb-8 pt-14 md:pt-20">
+      <header className="max-w-3xl">
+        <h1 className="h-page">{category ? `${category.label}.` : "Store."} <span className="text-muted">{category ? TAGLINES[category.slug] : "The best way to buy the cases you love."}</span></h1>
+        {data && <p className="mt-3 text-[15px] text-muted">{data.total} {data.total === 1 ? "case" : "cases"}{current.q ? ` for “${current.q}”` : ""}</p>}
+      </header>
 
-      {current.category && current.category in SITE.collections && SITE.collections[current.category as keyof typeof SITE.collections] && (
-        <div className="mt-5 grid h-44 grid-cols-[1fr_44%] items-center overflow-hidden rounded-3xl bg-tile md:h-60 md:grid-cols-[1fr_38%]">
-          <div className="p-5 md:p-10">
-            <p className="text-xs font-semibold uppercase tracking-widest text-olive-2">Collection</p>
-            <p className="mt-2 text-lg font-medium leading-snug tracking-tight md:text-3xl">{TAGLINES[current.category] ?? "Find your fit"}</p>
-          </div>
-          <div className="relative h-full">
-            <Image src={SITE.collections[current.category as keyof typeof SITE.collections]!} alt="" fill priority sizes="(min-width:768px) 450px, 45vw" className="object-contain p-2 mix-blend-multiply md:p-4" />
-          </div>
+      <div className="mt-10"><ShopFilters current={current} colors={colors} models={models} /></div>
+
+      {down ? (
+        <div className="tile mt-14 p-12 text-center">
+          <p className="text-[21px] font-semibold">The store is taking a moment.</p>
+          <p className="mt-1 text-muted">We could not load the cases just now. Please try again.</p>
+          <Link href="/shop" className="btn btn-blue mt-6">Try again</Link>
         </div>
-      )}
-
-      <div className="mt-6"><ShopFilters current={current} colors={colors} /></div>
-
-      {items.length === 0 ? (
-        <div className="mt-16 rounded-3xl bg-card p-12 text-center">
-          <p className="text-lg font-semibold">No cases match those filters</p>
-          <p className="mt-1 text-sm text-muted">Try removing a filter or searching for something else.</p>
-          <Link href="/shop" className="btn btn-dark mt-5">Clear filters</Link>
+      ) : data && data.items.length === 0 ? (
+        <div className="tile mt-14 p-12 text-center">
+          <p className="text-[21px] font-semibold">No cases match those filters.</p>
+          <p className="mt-1 text-muted">Try removing a filter or searching for something else.</p>
+          <Link href="/shop" className="btn btn-blue mt-6">Clear filters</Link>
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4">
-          {items.map((p) => <ProductCard key={p.id} p={p} />)}
-        </div>
+        <ul className="mt-12 grid grid-cols-2 gap-x-5 gap-y-12 lg:grid-cols-4">
+          {data?.items.map((p) => <li key={p.id}><ProductCard p={p} /></li>)}
+        </ul>
       )}
 
-      {pages > 1 && (
-        <nav className="mt-10 flex items-center justify-center gap-4 text-sm" aria-label="Pagination">
-          {page > 1 && <Link className="btn btn-ghost" href={href(page - 1)}>← Previous</Link>}
-          <span className="text-muted">Page {page} of {pages}</span>
-          {page < pages && <Link className="btn btn-ghost" href={href(page + 1)}>Next →</Link>}
+      {data && data.pages > 1 && (
+        <nav className="mt-16 flex items-center justify-center gap-8 text-[17px]" aria-label="Pagination">
+          {data.page > 1 && <Link className="link" href={href(data.page - 1)}>‹ Previous</Link>}
+          <span className="text-muted">Page {data.page} of {data.pages}</span>
+          {data.page < data.pages && <Link className="link" href={href(data.page + 1)}>Next ›</Link>}
         </nav>
       )}
     </div>
