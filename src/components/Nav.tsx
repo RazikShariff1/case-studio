@@ -14,7 +14,7 @@ const Icon = ({ d, extra }: { d: string; extra?: string }) => (
   </svg>
 );
 
-export default function Nav({ signedIn, name, bagCount }: { signedIn: boolean; name: string; bagCount: number }) {
+export default function Nav({ signedIn, bagCount }: { signedIn: boolean; bagCount: number }) {
   const router = useRouter();
   const pathname = usePathname();
   // A panel is open only on the page it was opened on, so navigating closes it without any effect.
@@ -64,7 +64,7 @@ export default function Nav({ signedIn, name, bagCount }: { signedIn: boolean; n
             <button className="grid h-11 w-11 place-items-center text-ink/80 hover:text-black" aria-label="Search" aria-expanded={search} onClick={() => { setSearchAt(search ? null : pathname); setMenuAt(null); }}>
               <Icon d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z" extra="m16 16 4.5 4.5" />
             </button>
-            <Link href={signedIn ? "/account" : "/login"} className="grid h-11 w-11 place-items-center text-ink/80 hover:text-black" aria-label={signedIn ? `Account, ${name}` : "Sign in"}>
+            <Link href={signedIn ? "/account" : "/login"} className="grid h-11 w-11 place-items-center text-ink/80 hover:text-black" aria-label={signedIn ? "Account" : "Sign in"}>
               <Icon d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" extra="M4.5 20a7.5 7.5 0 0 1 15 0" />
             </Link>
             <Link href="/cart" className="relative grid h-11 w-11 place-items-center text-ink/80 hover:text-black" aria-label={`Bag, ${bagCount} ${bagCount === 1 ? "item" : "items"}`}>

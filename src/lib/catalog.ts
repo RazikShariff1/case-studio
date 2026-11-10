@@ -11,6 +11,7 @@
  *   price    -> inventory-svc availability: the best offer (cheapest seller with stock), else the first offer
  */
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { store, type Page } from "./platform";
 import { toPaise } from "./money";
 import { type SortKey } from "./catalog-constants";
@@ -178,8 +179,25 @@ async function build(ttl: number): Promise<Catalog> {
   return { products: out, byVariant };
 }
 
-/** The catalogue as shoppers see it, reused for a short while. One load per request however many callers ask. */
-export const getCatalog = cache(() => build(CATALOGUE_TTL));
+/**
+ * The built catalogue is cached across requests and revalidated in the background (stale-while-revalidate), so moving between pages
+ * costs no round trip to the platform. Only the products are stored: a cache entry is JSON, so dates come back as strings and the
+ * variant lookup map is rebuilt from them.
+ */
+const cachedProducts = unstable_cache(async () => (await build(CATALOGUE_TTL)).products, ["catalogue-products-v1"], {
+  revalidate: CATALOGUE_TTL,
+  tags: ["catalogue"],
+});
+
+function assemble(products: CatalogProduct[]): Catalog {
+  const revived = products.map((p) => ({ ...p, createdAt: new Date(p.createdAt) }));
+  const byVariant: Catalog["byVariant"] = new Map();
+  revived.forEach((product) => product.variants.forEach((variant) => byVariant.set(variant.id, { product, variant })));
+  return { products: revived, byVariant };
+}
+
+/** The catalogue as shoppers see it. One lookup per request however many callers ask. */
+export const getCatalog = cache(async () => assemble(await cachedProducts()));
 
 /** The catalogue read fresh, for the moment of checkout when the seller and price must be current. */
 export const getFreshCatalog = () => build(0);
