@@ -29,22 +29,22 @@ export default function CheckoutForm({ defaultName, defaultPhone, addresses }: {
   }
 
   return (
-    <form id="checkout" onSubmit={submit} className="space-y-10" noValidate>
-      <section aria-labelledby="delivery">
-        <h2 id="delivery" className="text-[24px] font-semibold tracking-tight">Where should we deliver?</h2>
+    <form id="checkout" className="tx-co" onSubmit={submit} noValidate>
+      <section aria-labelledby="delivery" className="tx-co__sec">
+        <h2 id="delivery" className="tx-co__h">Where should we deliver?</h2>
 
         {addresses.length > 0 && (
           <fieldset className="mt-5 grid gap-3 sm:grid-cols-2">
             <legend className="sr-only">Saved addresses</legend>
             {addresses.map((a) => (
-              <label key={a.id} className={`cursor-pointer rounded-2xl border p-4 text-[14px] leading-snug transition ${picked === a.id ? "border-blue ring-1 ring-blue" : "border-line hover:border-ink/40"}`}>
+              <label key={a.id} className={`tx-co__opt${picked === a.id ? " is-on" : ""}`}>
                 <input type="radio" name="saved" className="sr-only" checked={picked === a.id} onChange={() => setPicked(a.id)} />
-                <span className="block text-[15px] font-semibold">{a.recipient}{a.label && <span className="ml-2 font-normal text-muted">{a.label}</span>}</span>
-                <span className="block text-muted">{a.line1}{a.line2 ? `, ${a.line2}` : ""}</span>
-                <span className="block text-muted">{a.city}, {a.state} {a.postalCode}</span>
+                <b>{a.recipient}{a.label && <span style={{ display: "inline", marginLeft: 8, fontWeight: 400 }}>{a.label}</span>}</b>
+                <span>{a.line1}{a.line2 ? `, ${a.line2}` : ""}</span>
+                <span>{a.city}, {a.state} {a.postalCode}</span>
               </label>
             ))}
-            <label className={`cursor-pointer rounded-2xl border p-4 text-[15px] font-semibold transition ${picked === "new" ? "border-blue ring-1 ring-blue" : "border-line hover:border-ink/40"}`}>
+            <label className={`tx-co__opt${picked === "new" ? " is-on" : ""}`} style={{ fontWeight: 600, fontSize: 15 }}>
               <input type="radio" name="saved" className="sr-only" checked={picked === "new"} onChange={() => setPicked("new")} />
               Use a different address
             </label>
@@ -67,22 +67,22 @@ export default function CheckoutForm({ defaultName, defaultPhone, addresses }: {
           <input type="hidden" name="country" value="India" />
           {picked === "new" && (
             <label className="flex items-center gap-3 text-[15px]">
-              <input type="checkbox" name="saveAddress" defaultChecked className="h-5 w-5 accent-[#0071e3]" /> Save this address for next time
+              <input type="checkbox" name="saveAddress" defaultChecked className="h-5 w-5 accent-[#1d1d1f]" /> Save this address for next time
             </label>
           )}
         </div>
       </section>
 
-      <section aria-labelledby="payment">
-        <h2 id="payment" className="text-[24px] font-semibold tracking-tight">How would you like to pay?</h2>
-        <div className="mt-5 rounded-2xl border border-blue p-5 ring-1 ring-blue">
-          <p className="text-[17px] font-semibold">Cash on delivery</p>
-          <p className="mt-0.5 text-[14px] text-muted">Pay when your order arrives. UPI and card payments are coming soon.</p>
+      <section aria-labelledby="payment" className="tx-co__sec">
+        <h2 id="payment" className="tx-co__h">How would you like to pay?</h2>
+        <div className="tx-co__opt is-on" style={{ marginTop: 20, padding: 20 }}>
+          <b style={{ fontSize: 17 }}>Cash on delivery</b>
+          <p className="tx-item__opt">Pay when your order arrives. UPI and card payments are coming soon.</p>
         </div>
       </section>
 
       {error && <p role="alert" className="text-[14px] text-danger">{error}</p>}
-      <button className="btn btn-blue btn-block md:w-auto md:min-w-64" disabled={busy}>{busy ? "Placing your order…" : "Place Order"}</button>
+      <button className="tx-btn md:min-w-64" style={{ marginTop: 40 }} disabled={busy}>{busy ? "Placing your order…" : "Place Order"}</button>
     </form>
   );
 }

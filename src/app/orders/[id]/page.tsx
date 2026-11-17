@@ -20,57 +20,67 @@ export default async function OrderPage({ params, searchParams }: PageProps<"/or
   const a = order.address;
 
   return (
-    <div className="container-xs py-14 md:py-20">
-      {sp.placed && (
-        <div role="status" className="rise mb-12 text-center">
-          <p className="text-[56px] leading-none" aria-hidden>✓</p>
-          <h1 className="h-page mt-4">Thank you for your order.</h1>
-          <p className="h-sub mt-3 text-muted">We will pack it soon and let you know it is on its way.</p>
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className={sp.placed ? "text-[24px] font-semibold tracking-tight" : "h-page"}>Order {order.number}</h2>
-        <p className="text-[14px] font-semibold">{statusLabel(order.status)}</p>
-      </div>
-      <p className="mt-1 text-[14px] text-muted">Placed {order.createdAt.toLocaleString("en-IN", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Kolkata" })}</p>
-
-      <div className="mt-8"><OrderTracker status={order.status} /></div>
-      {order.status === "PENDING" && <div className="mt-6"><CancelOrder id={order.id} /></div>}
-
-      <ul className="divide-y divide-line border-y border-line mt-10">
-        {order.items.map((i) => (
-          <li key={i.id} className="flex items-center gap-4 py-5">
-            <div className="tile relative h-20 w-16 shrink-0 overflow-hidden !rounded-xl"><Image src={i.image} alt="" fill sizes="64px" className="object-contain p-1.5 mix-blend-multiply" /></div>
-            <div className="min-w-0 flex-1">
-              {i.slug ? <Link href={`/product/${i.slug}`} className="block truncate text-[17px] font-semibold hover:underline">{i.name}</Link> : <p className="truncate text-[17px] font-semibold">{i.name}</p>}
-              <p className="text-[14px] text-muted">{[i.model, i.color].filter(Boolean).join(" · ")} · ×{i.quantity}</p>
+    <div className="tx-ad">
+      <div className="tx-ad__inner">
+        <div className="tx-ad__page">
+          {sp.placed && (
+            <div role="status" className="tx-ad__thanks">
+              <b aria-hidden>✓</b>
+              <h1>Thank you for your order.</h1>
+              <p>We will pack it soon and let you know it is on its way.</p>
             </div>
-            <p className="text-[17px]">{formatPrice(i.unitCents * i.quantity)}</p>
-          </li>
-        ))}
-      </ul>
+          )}
+          <Link href="/account#orders" className="tx-ad__mini">‹ My orders</Link>
+          <div className="tx-ad__order is-open" style={{ marginTop: 16 }}>
+            <div className="tx-ad__order-head">
+              <div>
+                <p className="tx-ad__label">Order ID</p>
+                <p className="tx-ad__order-id"><span>{order.number}</span></p>
+              </div>
+              <div className="tx-ad__chips">
+                <span className="tx-ad__chip">Placed {order.createdAt.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata" })}</span>
+                <span className={`tx-ad__status tx-ad__status--${order.status === "CANCELLED" ? "cancelled" : order.status === "DISPATCHED" || order.status === "COMPLETED" ? "shipped" : "processing"}`}>{statusLabel(order.status)}</span>
+              </div>
+            </div>
 
-      <div className="mt-10 grid gap-10 sm:grid-cols-2">
-        <section aria-labelledby="ship">
-          <h3 id="ship" className="text-[14px] font-semibold">Delivering to</h3>
-          <address className="mt-2 text-[15px] not-italic leading-snug text-muted">
-            <span className="block text-ink">{a.name}</span>
-            {a.line1}{a.line2 ? `, ${a.line2}` : ""}<br />{a.city}, {a.state} {a.pincode}<br />{a.country}<br />{a.phone}
-          </address>
-        </section>
-        <section aria-labelledby="pay">
-          <h3 id="pay" className="text-[14px] font-semibold">Payment</h3>
-          <dl className="mt-2 space-y-2 text-[15px]">
-            <div className="flex justify-between"><dt className="text-muted">Method</dt><dd>{order.paymentMethod === "COD" ? "Cash on delivery" : order.paymentMethod}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{formatPrice(order.subtotalCents)}</dd></div>
-            {order.discountCents > 0 && <div className="flex justify-between"><dt className="text-muted">Discount</dt><dd>−{formatPrice(order.discountCents)}</dd></div>}
-            <div className="flex justify-between"><dt className="text-muted">Delivery</dt><dd>Free</dd></div>
-            <div className="divider flex justify-between pt-3 text-[19px] font-semibold"><dt>Total</dt><dd>{formatPrice(order.totalCents)}</dd></div>
-          </dl>
-        </section>
+            <div className="tx-ad__detail-block" style={{ marginTop: 20 }}>
+              <p className="tx-ad__detail-title">Delivery</p>
+              <OrderTracker status={order.status} />
+            </div>
+            {order.status === "PENDING" && <div style={{ marginTop: 16 }}><CancelOrder id={order.id} /></div>}
+
+            <ul className="tx-ad__items" role="list" style={{ marginTop: 20 }}>
+              {order.items.map((i) => (
+                <li key={i.id} className="tx-ad__item">
+                  <span className="tx-ad__item-media"><Image src={i.image} alt="" width={96} height={96} sizes="96px" /></span>
+                  <span className="tx-ad__item-info">
+                    {i.slug ? <Link href={`/product/${i.slug}`} className="tx-ad__item-title tx-ad__order-link">{i.name}</Link> : <span className="tx-ad__item-title">{i.name}</span>}
+                    <span className="tx-ad__item-price">{formatPrice(i.unitCents * i.quantity)} <span className="tx-ad__soft">×{i.quantity}</span></span>
+                    {(i.model || i.color) && <span className="tx-ad__item-variant">{[i.model, i.color].filter(Boolean).join(" · ")}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="tx-ad__detail-grid" style={{ marginTop: 20 }}>
+              <div className="tx-ad__detail-block">
+                <p className="tx-ad__detail-title">Delivering to</p>
+                <div className="tx-ad__address-body"><strong>{a.name}</strong><br />{a.line1}{a.line2 ? `, ${a.line2}` : ""}<br />{a.city}, {a.state} {a.pincode}<br />{a.country}<br />{a.phone}</div>
+              </div>
+              <div className="tx-ad__detail-block">
+                <p className="tx-ad__detail-title">Payment</p>
+                <dl className="tx-ad__sum">
+                  <div><dt>Method</dt><dd>{order.paymentMethod === "COD" ? "Cash on delivery" : order.paymentMethod}</dd></div>
+                  <div><dt>Subtotal</dt><dd>{formatPrice(order.subtotalCents)}</dd></div>
+                  {order.discountCents > 0 && <div><dt>Discount</dt><dd>−{formatPrice(order.discountCents)}</dd></div>}
+                  <div><dt>Shipping</dt><dd>Free</dd></div>
+                  <div className="tx-ad__sum-total"><dt>Total</dt><dd>{formatPrice(order.totalCents)}</dd></div>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <Link href="/orders" className="link link-arrow mt-12 inline-block">All orders</Link>
     </div>
   );
 }

@@ -4,15 +4,8 @@ import { listProducts, listColors, getCatalog, CATEGORIES, SORTS, type SortKey }
 import ProductCard from "@/components/ProductCard";
 import ShopFilters from "@/components/ShopFilters";
 
-export const metadata: Metadata = { title: "Store" };
+export const metadata: Metadata = { title: "All cases" };
 export const dynamic = "force-dynamic";
-
-const TAGLINES: Record<string, string> = {
-  minimal: "Quiet colours. Clean lines.",
-  trendy: "Prints and patterns, fresh every week.",
-  luxury: "Leather, chrome and statement finishes.",
-  colorful: "Bright, bold and impossible to miss.",
-};
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 const num = (v?: string) => (v && !Number.isNaN(Number(v)) ? Number(v) : undefined);
@@ -47,39 +40,38 @@ export default async function ShopPage({ searchParams }: PageProps<"/shop">) {
   };
 
   return (
-    <div className="container-x pb-8 pt-14 md:pt-20">
-      <header className="max-w-3xl">
-        <h1 className="h-page">{category ? `${category.label}.` : "Store."} <span className="text-muted">{category ? TAGLINES[category.slug] : "The best way to buy the cases you love."}</span></h1>
-        {data && <p className="mt-3 text-[15px] text-muted">{data.total} {data.total === 1 ? "case" : "cases"}{current.q ? ` for “${current.q}”` : ""}</p>}
-      </header>
+    <section className="tx-plp tx-plp--no-head">
+      <div className="tx-plp__inner">
+        <h1 className="visually-hidden">{category ? category.label : "All cases"}</h1>
+        <ShopFilters current={current} colors={colors} models={models} count={data?.total ?? 0} base="/shop" />
 
-      <div className="mt-10"><ShopFilters current={current} colors={colors} models={models} /></div>
+        {down ? (
+          <div className="tx-plp__empty">
+            <p className="tx-plp__empty-title">The store is taking a moment. Please try again.</p>
+            <Link className="tx-landing__btn" href="/shop">Try again</Link>
+          </div>
+        ) : data && data.items.length === 0 ? (
+          <div className="tx-plp__empty">
+            <p className="tx-plp__empty-title">No cases match these filters.</p>
+            <Link className="tx-landing__btn" href="/shop">Clear filters</Link>
+          </div>
+        ) : (
+          <ul className="tx-plp__grid" role="list">
+            {data?.items.map((p, i) => <li key={p.id}><ProductCard p={p} index={i} /></li>)}
+          </ul>
+        )}
 
-      {down ? (
-        <div className="tile mt-14 p-12 text-center">
-          <p className="text-[21px] font-semibold">The store is taking a moment.</p>
-          <p className="mt-1 text-muted">We could not load the cases just now. Please try again.</p>
-          <Link href="/shop" className="btn btn-blue mt-6">Try again</Link>
-        </div>
-      ) : data && data.items.length === 0 ? (
-        <div className="tile mt-14 p-12 text-center">
-          <p className="text-[21px] font-semibold">No cases match those filters.</p>
-          <p className="mt-1 text-muted">Try removing a filter or searching for something else.</p>
-          <Link href="/shop" className="btn btn-blue mt-6">Clear filters</Link>
-        </div>
-      ) : (
-        <ul className="mt-12 grid grid-cols-2 gap-x-5 gap-y-12 lg:grid-cols-4">
-          {data?.items.map((p) => <li key={p.id}><ProductCard p={p} /></li>)}
-        </ul>
-      )}
-
-      {data && data.pages > 1 && (
-        <nav className="mt-16 flex items-center justify-center gap-8 text-[17px]" aria-label="Pagination">
-          {data.page > 1 && <Link className="link" href={href(data.page - 1)}>‹ Previous</Link>}
-          <span className="text-muted">Page {data.page} of {data.pages}</span>
-          {data.page < data.pages && <Link className="link" href={href(data.page + 1)}>Next ›</Link>}
-        </nav>
-      )}
-    </div>
+        {data && data.pages > 1 && (
+          <nav className="tx-plp__pages" aria-label="Pagination">
+            {data.page > 1 && <Link className="tx-plp__page tx-plp__page--nav" href={href(data.page - 1)} aria-label="Previous page">←</Link>}
+            {Array.from({ length: data.pages }, (_, i) => i + 1).map((n) =>
+              n === data.page
+                ? <span key={n} className="tx-plp__page is-on" aria-current="page">{n}</span>
+                : <Link key={n} className="tx-plp__page" href={href(n)}>{n}</Link>)}
+            {data.page < data.pages && <Link className="tx-plp__page tx-plp__page--nav" href={href(data.page + 1)} aria-label="Next page">→</Link>}
+          </nav>
+        )}
+      </div>
+    </section>
   );
 }

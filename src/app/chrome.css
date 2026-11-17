@@ -1,0 +1,21 @@
+/* Header chrome from the theme: stone mark on desktop, wordmark on phones; 20px thin-line icons; frosted bar. */
+.tx-header { background: rgba(251, 251, 253, 0.8); }
+.tx-logo { display: inline-flex; align-items: center; }
+.tx-logo img.tx-mark { width: 29px; height: 32px; object-fit: contain; display: block; }
+.tx-logo img.tx-wordmark { width: 100px; height: 32px; object-fit: contain; display: none; }
+@media (max-width: 989px) {
+  .tx-logo img.tx-mark { display: none; }
+  .tx-logo img.tx-wordmark { display: block; }
+}
+.tx-header .nav-link { font-size: 12px; padding: 10px 12px; color: rgba(0, 0, 0, 0.8); }
+.tx-header .nav-link:hover { color: #000; }
+.tx-header [aria-label="Search"]:hover, .tx-header a[href="/cart"]:hover, .tx-header a[href="/login"]:hover, .tx-header a[href="/account"]:hover { background: rgba(0, 0, 0, 0.05); border-radius: 50%; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Theme header geometry: .header.page-width (max 1200px, 32px sides), menu right-aligned beside the icons (custom-enhancements.css). */
+.tx-header > nav { max-width: 1200px; padding-inline: 15px; }
+@media (min-width: 750px) { .tx-header > nav { padding-inline: 32px; } }
+@media (min-width: 990px) {
+  .tx-header > nav { justify-content: flex-start; column-gap: 30px; }
+  .tx-header > nav > ul { margin-left: auto; gap: 0; }
+}

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { getCartData } from "@/lib/cart";
 import { getUser } from "@/lib/auth";
@@ -9,8 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function CartPage() {
   const [cart, user] = await Promise.all([getCartData(), getUser()]);
   return (
-    <div className="container-s py-14 md:py-20">
-      <h1 className="h-page mb-12">{cart.items.length ? "Review your bag." : "Your bag"} <span className="text-muted">{cart.items.length ? "Free delivery on everything." : ""}</span></h1>
+    <div className="tx-cart">
+      <div className="tx-cart__head">
+        <h1 className="tx-cart__title">Your cart</h1>
+        <Link href="/shop" className="tx-cart__link">Continue shopping</Link>
+      </div>
       <CartView initial={cart} signedIn={!!user} />
     </div>
   );

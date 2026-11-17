@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Field } from "./Field";
+import { TxField } from "./AccountPanels";
 
 const safeNext = (n: string) => (n.startsWith("/") && !n.startsWith("//") ? n : "/");
 
@@ -29,15 +29,15 @@ export default function AuthForm({ mode, next }: { mode: "login" | "register"; n
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4" noValidate>
-      {!isLogin && <Field name="name" label="Full name" autoComplete="name" error={fields.name} />}
-      <Field name="email" type="email" inputMode="email" label="Email" autoComplete="email" error={fields.email} />
-      <Field name="password" type="password" label="Password" autoComplete={isLogin ? "current-password" : "new-password"} error={fields.password} hint={isLogin ? undefined : "At least 8 characters"} />
-      {error && <p role="alert" className="text-[14px] text-danger">{error}</p>}
-      <button className="btn btn-blue btn-block" disabled={busy}>{busy ? "Please wait…" : isLogin ? "Sign in" : "Create account"}</button>
-      <p className="pt-2 text-center text-[14px] text-muted">
-        {isLogin ? "New to Case Studio? " : "Already have an account? "}
-        <Link className="link" href={`${isLogin ? "/register" : "/login"}?next=${encodeURIComponent(next)}`}>{isLogin ? "Create an account" : "Sign in"}</Link>
+    <form onSubmit={submit} noValidate>
+      {!isLogin && <TxField name="name" label="Full name" autoComplete="name" error={fields.name} full />}
+      <TxField name="email" type="email" inputMode="email" label="Email" autoComplete="email" error={fields.email} full />
+      <TxField name="password" type="password" label="Password" autoComplete={isLogin ? "current-password" : "new-password"} error={fields.password} hint={isLogin ? undefined : "At least 8 characters"} full />
+      {error && <p role="alert" className="tx-ad__form-error">{error}</p>}
+      <button className="tx-ad__btn tx-ad__btn--wide" disabled={busy}>{busy ? "Please wait…" : isLogin ? "Sign in" : "Create account"}</button>
+      <p className="tx-ad__soft tx-ad__guest-note">
+        {isLogin ? "New to Thingx? " : "Already have an account? "}
+        <Link className="tx-ad__link" href={`${isLogin ? "/register" : "/login"}?next=${encodeURIComponent(next)}`}>{isLogin ? "Create an account" : "Sign in"}</Link>
       </p>
     </form>
   );

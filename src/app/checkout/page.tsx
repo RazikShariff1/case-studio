@@ -20,27 +20,27 @@ export default async function CheckoutPage() {
   const addresses = token ? await listAddresses(token).catch(() => []) : [];
 
   return (
-    <div className="container-s py-14 md:py-20">
-      <h1 className="h-page mb-12">Checkout.</h1>
-      <div className="grid gap-14 lg:grid-cols-[1fr_340px]">
+    <div className="tx-cart tx-co">
+      <div className="tx-cart__head"><h1 className="tx-cart__title">Checkout</h1></div>
+      <div className="tx-co__grid">
         <CheckoutForm defaultName={user.name} defaultPhone={user.phone} addresses={addresses} />
-        <aside className="h-fit lg:sticky lg:top-20">
-          <h2 className="text-[21px] font-semibold tracking-tight">Your bag</h2>
-          <ul className="mt-5 space-y-4">
+        <aside className="tx-sum" style={{ position: "sticky", top: 96 }}>
+          <h2>Order summary</h2>
+          <ul role="list" style={{ display: "grid", gap: 16, margin: "0 0 24px", padding: 0, listStyle: "none" }}>
             {cart.items.map((i) => (
-              <li key={i.id} className="flex items-center gap-3">
-                <div className="tile relative h-16 w-14 shrink-0 overflow-hidden !rounded-xl">
-                  <Image src={i.image} alt="" fill sizes="56px" className="object-contain p-1.5 mix-blend-multiply" />
+              <li key={i.id} className="tx-co__line">
+                <div className="tx-item__img">
+                  <Image src={i.image} alt="" fill sizes="56px" />
                 </div>
                 <div className="min-w-0 flex-1 text-[14px]"><p className="truncate font-semibold">{i.name}</p><p className="text-muted">{[i.model, i.color].filter(Boolean).join(" · ")} · ×{i.quantity}</p></div>
                 <p className="text-[14px]">{formatPrice(i.unitCents * i.quantity)}</p>
               </li>
             ))}
           </ul>
-          <dl className="divider mt-6 space-y-3 pt-5 text-[15px]">
-            <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd>{formatPrice(cart.subtotalCents)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Delivery</dt><dd>Free</dd></div>
-            <div className="flex justify-between pt-2 text-[21px] font-semibold"><dt>Total</dt><dd>{formatPrice(cart.totalCents)}</dd></div>
+          <dl>
+            <div><dt>Subtotal</dt><dd>{formatPrice(cart.subtotalCents)}</dd></div>
+            <div><dt>Delivery</dt><dd>Free</dd></div>
+            <div className="is-total"><dt>Total</dt><dd>{formatPrice(cart.totalCents)}</dd></div>
           </dl>
         </aside>
       </div>

@@ -1,4 +1,11 @@
 @import "tailwindcss";
+@import "./search.css";
+@import "./collection.css";
+@import "./chrome.css";
+@import "./home.css";
+@import "./account.css";
+@import "./pdp.css";
+@import "./cart.css";
 
 /* An Apple-style storefront: system type, generous space, light grey product tiles, one blue accent. */
 :root {
@@ -90,3 +97,6 @@ select.input { appearance: none; background-image: url("data:image/svg+xml;utf8,
 
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ---- 3D stages: a soft studio backdrop behind the WebGL canvas ---- */
+.stage-3d { background: radial-gradient(120% 90% at 50% 20%, #ffffff 0%, var(--surface) 55%, #ebebf0 100%); }

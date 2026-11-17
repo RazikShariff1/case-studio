@@ -1,9 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProduct, relatedProducts, CATEGORIES } from "@/lib/catalog";
-import ProductBuy from "@/components/ProductBuy";
+import ProductStage from "@/components/ProductStage";
 import ProductCard from "@/components/ProductCard";
 
 export const dynamic = "force-dynamic";
@@ -30,16 +29,13 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
         </nav>
       </div>
 
-      <div className="container-x mt-6 grid gap-10 md:grid-cols-[1.15fr_1fr] md:gap-16 lg:gap-24">
-        <div className="md:sticky md:top-20 md:self-start">
-          <div className="tile relative aspect-[4/5] overflow-hidden md:aspect-square">
-            <Image src={p.image} alt={p.name} fill priority sizes="(min-width:768px) 600px, 100vw" className="object-contain p-8 mix-blend-multiply md:p-14" style={{ objectPosition: p.imagePosition }} />
-          </div>
-        </div>
-        <div className="pb-4 md:pt-6">
-          <ProductBuy name={p.name} rating={p.rating} reviewCount={p.reviewCount} variants={p.variants.map((v) => ({ id: v.id, model: v.model, color: v.color, colorHex: v.colorHex, stock: v.stock, priceCents: v.priceCents, compareAtCents: v.compareAtCents }))} />
-        </div>
-      </div>
+      <ProductStage
+        name={p.name}
+        images={p.images}
+        description={p.description}
+        category={category?.label ?? ""}
+        buy={{ name: p.name, rating: p.rating, reviewCount: p.reviewCount, variants: p.variants.map((v) => ({ id: v.id, model: v.model, color: v.color, colorHex: v.colorHex, stock: v.stock, priceCents: v.priceCents, compareAtCents: v.compareAtCents })) }}
+      />
 
       {/* Highlights: big words, the way Apple lists what matters. */}
       <section className="container-s mt-24 md:mt-32" aria-labelledby="highlights">

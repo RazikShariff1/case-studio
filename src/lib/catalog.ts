@@ -68,6 +68,8 @@ export type CatalogProduct = {
   description: string;
   category: string;
   image: string;
+  /** Every photo of the product, in order (the first is `image`). */
+  images: string[];
   imagePosition: string;
   features: string[];
   rating: number;
@@ -161,6 +163,7 @@ async function build(ttl: number): Promise<Catalog> {
       description: p.description || p.tagLine,
       category: (p.primaryCategoryId != null && slugOf.get(p.primaryCategoryId)) || "",
       image: p.images?.[0] || NO_PHOTO,
+      images: p.images?.length ? p.images : [NO_PHOTO],
       imagePosition: str(meta.imagePosition, "50% 50%"),
       features: Array.isArray(meta.features) ? meta.features.filter((f): f is string => typeof f === "string") : [],
       rating: num(meta.rating, 4.5),

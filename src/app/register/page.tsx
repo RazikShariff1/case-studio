@@ -12,10 +12,16 @@ export default async function Page({ searchParams }: PageProps<"/register">) {
   const next = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
   if (await getUser()) redirect(next);
   return (
-    <div className="container-xs py-14 md:py-24">
-      <h1 className="h-page text-center">Create your account.</h1>
-      <p className="mb-10 mt-3 text-center text-[17px] text-muted">One account for your bag, addresses and orders.</p>
-      <div className="mx-auto max-w-sm"><AuthForm mode="register" next={next} /></div>
+    <div className="tx-ad tx-auth">
+      <div className="tx-ad__inner">
+        <div className="tx-ad__guest">
+          <div className="tx-ad__guest-card">
+            <h1 className="tx-ad__guest-title">Create your account.</h1>
+            <p className="tx-ad__guest-text">One account for your bag, addresses and orders.</p>
+            <AuthForm mode="register" next={next} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -6,10 +6,10 @@ import { formatPrice } from "@/lib/money";
 import { PHONE_MODELS } from "@/lib/catalog-constants";
 
 type V = { id: string; model: string; color: string; colorHex: string; stock: number; priceCents: number; compareAtCents: number | null };
-type Props = { name: string; rating: number; reviewCount: number; variants: V[] };
+type Props = { name: string; rating: number; reviewCount: number; variants: V[]; description?: string; category?: string };
 
 /** The buying steps: choose a phone, choose a colour, add to bag. The price follows the selection. */
-export default function ProductBuy({ name, rating, reviewCount, variants }: Props) {
+export default function ProductBuy({ name, variants, description, category }: Props) {
   const router = useRouter();
   const models = useMemo(() => {
     const rank = (m: string) => { const i = (PHONE_MODELS as readonly string[]).indexOf(m); return i < 0 ? 99 : i; };
@@ -45,72 +45,90 @@ export default function ProductBuy({ name, rating, reviewCount, variants }: Prop
     if (!res.ok) return setMsg({ ok: false, text: data.error ?? "Could not add to your bag" });
     setMsg({ ok: true, text: "Added to your bag." });
     router.refresh();
+    window.dispatchEvent(new Event("cart:open"));
   }
 
+  const save = selected?.compareAtCents && selected.priceCents ? Math.floor(((selected.compareAtCents - selected.priceCents) * 100) / selected.compareAtCents) : 0;
+
   return (
-    <div>
-      <p className="eyebrow">{variants.length > 1 ? "Buy" : "Shop"}</p>
-      <h1 className="h-page mt-1">{name}</h1>
-      <p className="mt-2 flex items-center gap-2 text-[14px] text-muted">
-        <span className="text-ink" aria-hidden>{"★".repeat(Math.round(rating))}<span className="text-ink/20">{"★".repeat(5 - Math.round(rating))}</span></span>
-        <span>{rating.toFixed(1)} · {reviewCount.toLocaleString("en-IN")} reviews</span>
-      </p>
-      <p className="mt-4 text-[21px] font-semibold">
-        {formatPrice(selected?.priceCents ?? 0)}
-        {selected?.compareAtCents && <span className="ml-3 text-[17px] font-normal text-muted line-through">{formatPrice(selected.compareAtCents)}</span>}
-      </p>
+    <div className="tx-pdp__sticky">
+      <h1 className="tx-pdp__title">{name}</h1>
+      <div className="tx-pdp__price">
+        <span className="tx-pdp__now">{formatPrice(selected?.priceCents ?? 0)}</span>
+        {selected?.compareAtCents ? <s className="tx-pdp__was">{formatPrice(selected.compareAtCents)}</s> : null}
+        {save > 0 && <span className="tx-pdp__save">Save {save}%</span>}
+      </div>
+      <p className="tx-pdp__tax">Inclusive of all taxes</p>
 
-      <fieldset className="mt-10">
-        <legend className="text-[24px] font-semibold leading-tight tracking-tight">Choose your phone. <span className="text-muted">Which one is it for?</span></legend>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {models.map((m) => {
-            const on = model === m;
-            const any = variants.some((v) => v.model === m && v.stock > 0);
-            return (
-              <button key={m} type="button" aria-pressed={on} onClick={() => pickModel(m)}
-                className={`flex items-center justify-between rounded-2xl border px-5 py-4 text-left transition ${on ? "border-blue ring-1 ring-blue" : "border-line hover:border-ink/40"}`}>
-                <span className="text-[17px] font-semibold">{m}</span>
-                {!any && <span className="text-[12px] text-muted">Sold out</span>}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      {models.length > 1 && (
+        <fieldset className="tx-pdp__option">
+          <legend>Phone: <strong>{model}</strong></legend>
+          <div className="tx-pdp__pills">
+            {models.map((m) => (
+              <label key={m} className="tx-pdp__pill">
+                <input type="radio" name="tx-model" checked={model === m} onChange={() => pickModel(m)} />
+                <span>{m}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
-      <fieldset className="mt-10">
-        <legend className="text-[24px] font-semibold leading-tight tracking-tight">Choose your colour. <span className="text-muted">{color}</span></legend>
-        <div className="mt-5 flex flex-wrap gap-4">
-          {colors.map(([c, hex]) => {
-            const v = find(model, c);
-            const on = color === c;
-            return (
-              <button key={c} type="button" disabled={!v} aria-label={`${c}${v && v.stock <= 0 ? " (sold out)" : ""}`} aria-pressed={on}
-                onClick={() => { setColor(c); setQty(1); setMsg(null); }}
-                className={`grid h-14 w-14 place-items-center rounded-full border-2 transition disabled:opacity-25 ${on ? "border-blue" : "border-transparent hover:border-ink/20"}`}>
-                <span className={`block h-10 w-10 rounded-full border border-black/15 ${v && v.stock <= 0 ? "opacity-40" : ""}`} style={{ background: hex }} />
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
+      {colors.length > 1 && (
+        <fieldset className="tx-pdp__option">
+          <legend>Colour: <strong>{color}</strong></legend>
+          <div className="tx-pdp__pills">
+            {colors.map(([c]) => (
+              <label key={c} className="tx-pdp__pill">
+                <input type="radio" name="tx-color" disabled={!find(model, c)} checked={color === c} onChange={() => { setColor(c); setQty(1); setMsg(null); }} />
+                <span>{c}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
-      <div className="mt-10 flex items-center gap-5">
-        <div className="flex items-center rounded-full bg-surface">
-          <button type="button" className="h-11 w-11 text-[22px] leading-none" aria-label="Fewer" disabled={qty <= 1} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-          <span className="w-8 text-center text-[17px] font-semibold" aria-live="polite">{qty}</span>
-          <button type="button" className="h-11 w-11 text-[22px] leading-none" aria-label="More" disabled={qty >= maxQty} onClick={() => setQty((q) => Math.min(maxQty, q + 1))}>+</button>
+      <div className="tx-pdp__form">
+        <div className="tx-pdp__buy">
+          <div className="tx-pdp__qty">
+            <button type="button" aria-label="Decrease quantity" disabled={qty <= 1} onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
+            <span aria-live="polite">{qty}</span>
+            <button type="button" aria-label="Increase quantity" disabled={qty >= maxQty} onClick={() => setQty((q) => Math.min(maxQty, q + 1))}>+</button>
+          </div>
+          <button type="button" className="tx-pdp__add" onClick={add} disabled={busy || stock <= 0}>
+            {stock <= 0 ? "Sold out" : busy ? "Adding…" : msg?.ok ? "Added ✓" : "Add to cart"}
+          </button>
         </div>
-        <p className={`text-[14px] ${stock > 0 && stock <= 5 ? "text-danger" : "text-muted"}`}>{stock <= 0 ? "Sold out" : stock <= 5 ? `Only ${stock} left` : "In stock"}</p>
+        <p role="alert" className="tx-pdp__error" hidden={!msg || msg.ok}>{msg?.text}</p>
+        {msg?.ok && <p className="tx-pdp__ok">Added to your bag. <a href="/cart" className="link">View your bag</a></p>}
+        {stock > 0 && stock <= 5 && <p className="tx-pdp__error">Only {stock} left</p>}
       </div>
 
-      {/* On phones the button stays at the bottom of the screen with the price, as on apple.com. */}
-      <div className="sticky bottom-0 z-30 -mx-[22px] mt-6 border-t border-line bg-white/90 px-[22px] py-3 backdrop-blur-xl md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-        <button className="btn btn-blue btn-block" onClick={add} disabled={busy || stock <= 0}>
-          {stock <= 0 ? "Sold out" : busy ? "Adding…" : `Add to Bag · ${formatPrice(total)}`}
-        </button>
-        <p role="status" className={`min-h-5 pt-2 text-center text-[14px] ${msg?.ok ? "text-good" : "text-danger"}`}>
-          {msg?.text} {msg?.ok && <a href="/cart" className="link">View your bag</a>}
-        </p>
+      <ul className="tx-pdp__perks" role="list">
+        <li>Free delivery on every order</li>
+        <li>Pay on delivery</li>
+        <li>7-day returns</li>
+      </ul>
+
+      <div className="tx-pdp__details">
+        {description && (
+          <details open>
+            <summary>Description</summary>
+            <div className="tx-pdp__rte"><p>{description}</p></div>
+          </details>
+        )}
+        <details>
+          <summary>Product details</summary>
+          <dl className="tx-pdp__specs">
+            {category && <div><dt>Type</dt><dd>{category}</dd></div>}
+            <div><dt>Compatible with</dt><dd>{model}</dd></div>
+            <div><dt>Colour</dt><dd>{color}</dd></div>
+          </dl>
+        </details>
+        <details>
+          <summary>Shipping &amp; returns</summary>
+          <div className="tx-pdp__rte"><p>Free delivery on every order. Pay on delivery. Easy 7-day returns.</p></div>
+        </details>
       </div>
     </div>
   );

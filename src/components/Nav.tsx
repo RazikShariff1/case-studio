@@ -1,11 +1,11 @@
 "use client";
 
+import SearchPanel from "@/components/SearchPanel";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { CATEGORIES } from "@/lib/catalog-constants";
 
-const LINKS = [{ href: "/shop", label: "Store" }, ...CATEGORIES.map((c) => ({ href: `/shop?category=${c.slug}`, label: c.label }))];
+const LINKS = [{ href: "/shop", label: "Store" }];
 
 const Icon = ({ d, extra }: { d: string; extra?: string }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -40,16 +40,19 @@ export default function Nav({ signedIn, bagCount }: { signedIn: boolean; bagCoun
 
   return (
     <>
-      <header className="nav-glass sticky top-0 z-50">
-        <nav aria-label="Global" className="container-x flex h-12 items-center justify-between gap-2">
+      <header className="nav-glass tx-header sticky top-0 z-50">
+        <nav aria-label="Global" className="container-x flex h-[56px] items-center justify-between gap-2">
           <button className="-ml-2 grid h-11 w-11 place-items-center md:hidden" aria-label={menu ? "Close menu" : "Menu"} aria-expanded={menu} onClick={() => { setMenuAt(menu ? null : pathname); setSearchAt(null); }}>
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
               {menu ? <path d="M3 3l12 12M15 3L3 15" /> : <path d="M2 6h14M2 12h14" />}
             </svg>
           </button>
 
-          <Link href="/" aria-label="Case Studio home" className="text-[17px] font-semibold tracking-tight max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2">
-            Case Studio
+          <Link href="/" aria-label="Thingx home" className="tx-logo max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/theme/thingx-mark.png" alt="Thingx" width={29} height={32} className="tx-mark" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/theme/thingx-wordmark.png" alt="Thingx" width={100} height={32} className="tx-wordmark" />
           </Link>
 
           <ul className="hidden items-center gap-8 md:flex">
@@ -75,21 +78,7 @@ export default function Nav({ signedIn, bagCount }: { signedIn: boolean; bagCoun
         </nav>
       </header>
 
-      {/* Search: a sheet under the bar, like apple.com's. */}
-      {search && (
-        <div className="fixed inset-x-0 bottom-0 top-12 z-40 bg-white/95 backdrop-blur-xl rise" role="dialog" aria-label="Search">
-          <form onSubmit={submit} role="search" className="container-xs pt-10">
-            <div className="flex items-center gap-3 border-b border-line pb-3">
-              <Icon d="M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13z" extra="m16 16 4.5 4.5" />
-              <input ref={input} name="q" autoComplete="off" placeholder="Search Case Studio" aria-label="Search" className="w-full bg-transparent text-[28px] font-semibold tracking-tight outline-none placeholder:text-muted/60" />
-            </div>
-            <p className="fine mt-8 uppercase tracking-widest">Quick links</p>
-            <ul className="mt-3 space-y-2.5 text-[17px] font-semibold">
-              {LINKS.map((l) => <li key={l.href}><Link href={l.href} className="hover:text-link">{l.label === "Store" ? "All cases" : `${l.label} cases`}</Link></li>)}
-            </ul>
-          </form>
-        </div>
-      )}
+      <SearchPanel open={search} onClose={() => setSearchAt(null)} top={56} />
 
       {/* Menu: full-screen list on phones. */}
       {menu && (
